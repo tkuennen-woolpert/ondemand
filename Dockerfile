@@ -1,4 +1,4 @@
-FROM rockylinux/rockylinux:8
+FROM  almalinux/almalinux:8
 LABEL maintainer="tdockendorf@osc.edu; johrstrom@osc.edu"
 
 ARG VERSION=latest
@@ -6,15 +6,16 @@ ARG CONCURRENCY=4
 ENV PYTHON=/usr/libexec/platform-python
 
 # setup the ondemand repositories
-RUN dnf -y install https://yum.osc.edu/ondemand/latest/ondemand-release-web-latest-1-6.noarch.rpm
+RUN dnf install -y https://yum.osc.edu/ondemand/3.0/ondemand-release-web-3.0-1.noarch.rpm
 
 # install all the dependencies
 RUN dnf -y update && \
     dnf install -y dnf-utils && \
     dnf config-manager --set-enabled powertools && \
-    dnf -y module enable nodejs:18 ruby:3.1 && \
+    dnf -y module enable nodejs:14 ruby:3.0 && \
     dnf install -y \
         file \
+        net-tools \
         lsof \
         sudo \
         gcc \
@@ -29,7 +30,6 @@ RUN dnf -y update && \
         ondemand-apache \
         ondemand-ruby \
         ondemand-nodejs \
-        ondemand-python \
         ondemand-dex \
         ondemand-passenger \
         ondemand-nginx && \
@@ -59,7 +59,7 @@ RUN source /opt/rh/ondemand/enable && \
 # copy configuration files
 RUN mkdir -p /etc/ood/config
 RUN cp /opt/ood/nginx_stage/share/nginx_stage_example.yml            /etc/ood/config/nginx_stage.yml
-RUN cp /opt/ood/ood-portal-generator/share/ood_portal_example.yml    /etc/ood/config/ood_portal.yml
+COPY docker/ood_portal.yml                                           /etc/ood/config/ood_portal.yml
 
 # make some misc directories & files
 RUN mkdir -p /var/lib/ondemand-nginx/config/apps/{sys,dev,usr}
@@ -74,10 +74,9 @@ apache ALL=(ALL) NOPASSWD: /opt/ood/nginx_stage/sbin/nginx_stage' >/etc/sudoers.
 RUN /opt/ood/ood-portal-generator/sbin/update_ood_portal --insecure
 RUN /opt/ood/nginx_stage/sbin/update_nginx_stage
 RUN echo $VERSION > /opt/ood/VERSION
-# this one bc centos:8 doesn't generate localhost cert
+# this one bc el8 doesn't generate localhost cert
 RUN /usr/libexec/httpd-ssl-gencerts
 
-EXPOSE 8080
-EXPOSE 5556
-EXPOSE 3035
+EXPOSE 80
+EXPOSE 443
 CMD [ "/opt/ood/launch" ]
